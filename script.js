@@ -64,11 +64,12 @@ const deletebtn = document.querySelector('.delete__btn');
 const clearbtn = document.querySelector('.clear__btn');
 const overlay = document.querySelector('.overlay');
 const modal = document.querySelector('.modal');
-const LabelContainer = document.querySelector('label[for="sort__workout"]');
-const optionElements = document.querySelectorAll(
-  '#sort__workout option[value]'
-);
-console.log(LabelContainer, optionElements);
+const sortMenu = document.querySelector('.sort__menu');
+const sortDistance = document.querySelector('.sort--distance');
+const sortDuration = document.querySelector('.sort--duration');
+const sortPaceSpeed = document.querySelector('.sort--paceSpeed');
+const sortCadence = document.querySelector('.sort--cadence');
+const sortElevation = document.querySelector('.sort--elevation');
 
 class App {
   #map;
@@ -89,6 +90,25 @@ class App {
     containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     deletebtn.addEventListener('click', this._deleteWorkout.bind(this));
     clearbtn.addEventListener('click', this._clearWorkouts);
+    sortDistance.addEventListener('click', () =>
+      this._sortWorkouts(this.#workouts, 'distance')
+    );
+    sortDuration.addEventListener('click', () =>
+      this._sortWorkouts(this.#workouts, 'duration')
+    );
+    sortPaceSpeed.addEventListener('click', () =>
+      this._sortWorkouts(
+        this.#workouts,
+        this.type === 'running' ? 'pace' : 'speed'
+      )
+    );
+
+    sortCadence.addEventListener('click', () =>
+      this._sortWorkouts(this.#workouts, 'cadence')
+    );
+    sortElevation.addEventListener('click', () =>
+      this._sortWorkouts(this.#workouts, 'elevationGain')
+    );
   }
 
   _getPosition() {
@@ -246,10 +266,47 @@ class App {
     }
 
     this.#workouts.push(workout);
+    this._showSortMenu();
     this._renderWorkoutMarker(workout);
     this._renderWorkout(workout);
     this._hideForm();
     this._setLocalStorage();
+  }
+
+  _sortWorkouts(workouts, key) {
+    this._hideForm();
+    this._hideButtons();
+
+    workouts.sort((a, b) => {
+      if (a[key] === undefined || a[key] === null) {
+        return 1;
+      } else if (b[key] === undefined || b[key] === null) {
+        return -1;
+      } else {
+        return a[key] - b[key];
+      }
+    });
+
+    const workoutElements = document.querySelectorAll('.workout');
+    workoutElements.forEach(workoutElement => {
+      if (containerWorkouts.contains(workoutElement)) {
+        containerWorkouts.removeChild(workoutElement);
+      }
+    });
+
+    workouts.forEach(work => {
+      this._renderWorkout(work);
+    });
+
+    console.log(workouts);
+  }
+
+  _showSortMenu() {
+    if (this.#workouts.length > 1) sortMenu.classList.remove('hidesort');
+  }
+
+  _hideSortMenu() {
+    if (this.#workouts.length <= 1) sortMenu.classList.add('hidesort');
   }
 
   _showButtons() {
@@ -328,6 +385,7 @@ class App {
       marker => marker._id === this.#targetWorkout.id
     );
     marker.removeFrom(this.#map);
+    this._hideSortMenu();
     this._hideButtons();
     this._hideForm();
   }
@@ -461,6 +519,7 @@ class App {
     this.#workouts.forEach(work => {
       this._renderWorkout(work);
     });
+    this._showSortMenu();
   }
 
   reset() {

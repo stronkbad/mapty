@@ -38,16 +38,13 @@
 
     <div class="sidebar">
       <img src="logo.png" alt="Logo" class="logo" />
-
-      <label for="sort__workout"></label>
-        <select name="sort__workout" id="sort__workout">
-          <option value="Distance">Distance</option>
-          <option value="Duration">Duration</option>
-          <option value="Cadence">Cadence</option>
-          <option value="Elevation">Elevation</option>
-          <option value="PaceSpeed">Speed/Pace</option>
-        </select>
-
+      <div class="sort__menu hidesort">
+        <button class="sort--distance">🏃‍♂️</button>
+        <button class="sort--duration">⏱</button>
+        <button class="sort--paceSpeed">⚡️</button>
+        <button class="sort--cadence">🦶🏼</button>
+        <button class="sort--elevation">⛰</button>
+      </div>
       <button class="delete__btn hidebtns">Delete</button>
       <button class="clear__btn hidebtns">Delete All</button>
       <ul class="workouts">
