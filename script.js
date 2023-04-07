@@ -67,6 +67,9 @@ const inputDuration = document.querySelector('.form__input--duration');
 const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
 const deletebtn = document.querySelector('.delete__btn');
+const clearbtn = document.querySelector('.clear__btn');
+const overlay = document.querySelector('.overlay');
+const modal = document.querySelector('.modal');
 
 class App {
   #map;
@@ -80,11 +83,13 @@ class App {
   constructor() {
     this._getPosition();
     this._getLocalStorage();
+    this._closeModal();
     //attach event handlers
     form.addEventListener('submit', this._newWorkout.bind(this));
     inputType.addEventListener('change', this._toggleElevationField);
     containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     deletebtn.addEventListener('click', this._deleteWorkout.bind(this));
+    clearbtn.addEventListener('click', this._clearWorkouts);
   }
 
   _getPosition() {
@@ -119,6 +124,21 @@ class App {
     this.#mapEvent = mapE;
     inputType.disabled = false;
     this._hideButtons();
+  }
+
+  _closeModal() {
+    if (this.#workouts.length > 0) modal.textContent = 'Welcome back!';
+    else modal.textContent = 'Click on the map to get started!';
+    overlay.addEventListener('click', function () {
+      overlay.style.display = 'none';
+      modal.style.display = 'none';
+    });
+
+    modal.addEventListener('click', function (event) {
+      overlay.style.display = 'none';
+      modal.style.display = 'none';
+      event.stopPropagation();
+    });
   }
 
   _showForm(mapE) {
@@ -240,10 +260,13 @@ class App {
   _showButtons() {
     // editbtn.classList.remove('hidebtns');
     deletebtn.classList.remove('hidebtns');
+    if (this.#workouts.length >= 2) clearbtn.classList.remove('hidebtns');
   }
+
   _hideButtons() {
     // editbtn.classList.add('hidebtns');
     deletebtn.classList.add('hidebtns');
+    if (this.#workouts.length >= 1) clearbtn.classList.add('hidebtns');
   }
 
   _editWorkout(workout) {
@@ -290,6 +313,12 @@ class App {
     marker.removeFrom(this.#map);
     this._hideButtons();
     this._hideForm();
+  }
+
+  _clearWorkouts() {
+    alert('Are you sure you want to delete all workouts?');
+    localStorage.removeItem('workouts');
+    location.reload();
   }
 
   _renderWorkoutMarker(workout) {
