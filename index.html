@@ -34,9 +34,20 @@
   <body>
     <div class="overlay"></div>
     <div class="modal"></div>
+    
 
     <div class="sidebar">
       <img src="logo.png" alt="Logo" class="logo" />
+
+      <label for="sort__workout"></label>
+        <select name="sort__workout" id="sort__workout">
+          <option value="Distance">Distance</option>
+          <option value="Duration">Duration</option>
+          <option value="Cadence">Cadence</option>
+          <option value="Elevation">Elevation</option>
+          <option value="PaceSpeed">Speed/Pace</option>
+        </select>
+
       <button class="delete__btn hidebtns">Delete</button>
       <button class="clear__btn hidebtns">Delete All</button>
       <ul class="workouts">
