@@ -279,9 +279,9 @@ class App {
 
     workouts.sort((a, b) => {
       if (a[key] === undefined || a[key] === null) {
-        return 1;
-      } else if (b[key] === undefined || b[key] === null) {
         return -1;
+      } else if (b[key] === undefined || b[key] === null) {
+        return 1;
       } else {
         return a[key] - b[key];
       }
