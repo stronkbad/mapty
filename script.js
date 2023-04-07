@@ -78,11 +78,11 @@ class App {
   #mapZoomLevel = 14;
   #targetWorkout;
   #markers = [];
-  #marker;
 
   constructor() {
     this._getPosition();
     this._getLocalStorage();
+    this._drawLines();
     this._modalMessage();
     //attach event handlers
     form.addEventListener('submit', this._newWorkout.bind(this));
@@ -120,6 +120,7 @@ class App {
         }
       );
   }
+  // create an empty polyline layer and add it to the map
 
   _loadMap(position) {
     const { latitude } = position.coords;
@@ -130,11 +131,36 @@ class App {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(this.#map);
+    const drawControl = new L.Control.Draw({
+      draw: {
+        polyline: true, // enable drawing polylines
+        polygon: true,
+        circle: false,
+        marker: true,
+        rectangle: false,
+      },
+    });
+    console.log(drawControl);
+    this.#map.addControl(drawControl);
+
     //handling clicks on map
     this.#map.on('click', this._showForm.bind(this));
     this.#workouts.forEach(work => {
       this._renderWorkoutMarker(work);
     });
+  }
+
+  _drawLines() {
+    // const drawnItems = new L.FeatureGroup();
+    // this.#map.addLayer(drawnItems);
+    // // when a polyline is created, add it to the drawnItems layer and save its coordinates
+    // this.#map.on('draw:created', function (e) {
+    //   const layer = e.layer;
+    //   drawnItems.addLayer(layer);
+    //   // get the coordinates of the polyline and save them to a variable or send them to your server
+    //   const polylineCoords = layer.getLatLngs();
+    //   console.log(polylineCoords);
+    // });
   }
 
   _mapClick(mapE) {
@@ -176,7 +202,6 @@ class App {
   }
 
   _fillForm(workout) {
-    console.log(workout);
     inputType.value = workout.type;
     inputType.disabled = true;
     inputDistance.value = workout.distance;
