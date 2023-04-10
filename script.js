@@ -4,12 +4,13 @@ class Workout {
   date = new Date();
   clicks = 0;
 
-  constructor(coords, distance, duration, created, id) {
+  constructor(coords, distance, duration, created, id, line) {
     this.created = created;
     this.coords = coords; // [lat, lng]
     this.distance = distance; // in km
     this.duration = duration; // in min
     this.id = id;
+    this.line = line;
   }
   _setDescription() {
     // prettier-ignore
@@ -25,8 +26,8 @@ class Workout {
 
 class Running extends Workout {
   type = 'running';
-  constructor(coords, distance, duration, cadence, created, id) {
-    super(coords, distance, duration, created, id);
+  constructor(coords, distance, duration, cadence, created, id, line) {
+    super(coords, distance, duration, created, id, line);
     this.cadence = cadence;
     this._setDescription();
     this.calcPace();
@@ -39,8 +40,8 @@ class Running extends Workout {
 
 class Cycling extends Workout {
   type = 'cycling';
-  constructor(coords, distance, duration, elevationGain, created, id) {
-    super(coords, distance, duration, created, id);
+  constructor(coords, distance, duration, elevationGain, created, id, line) {
+    super(coords, distance, duration, created, id, line);
     this.elevationGain = elevationGain;
     this._setDescription();
     this.calcSpeed();
@@ -78,13 +79,20 @@ class App {
   #mapZoomLevel = 14;
   #targetWorkout;
   #markers = [];
+  #line;
+  #center;
+  #polylines = [];
+  #drawLine;
+  #drawnLines = new L.FeatureGroup();
 
   constructor() {
     this._getPosition();
     this._getLocalStorage();
-    this._drawLines();
     this._modalMessage();
     //attach event handlers
+    // document
+    //   .querySelector('#create-button')
+    //   .addEventListener('click', this._newWorkout.bind(this));
     form.addEventListener('submit', this._newWorkout.bind(this));
     inputType.addEventListener('change', this._toggleElevationField);
     containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
@@ -120,7 +128,6 @@ class App {
         }
       );
   }
-  // create an empty polyline layer and add it to the map
 
   _loadMap(position) {
     const { latitude } = position.coords;
@@ -136,31 +143,39 @@ class App {
         polyline: true, // enable drawing polylines
         polygon: true,
         circle: false,
-        marker: true,
-        rectangle: false,
+        marker: false,
+        rectangle: true,
       },
+      edit: false,
     });
-    console.log(drawControl);
     this.#map.addControl(drawControl);
 
-    //handling clicks on map
-    this.#map.on('click', this._showForm.bind(this));
+    //handling clicks on map;
+    // this.#map.on('click', this._showForm.bind(this));
+    // when a polyline is created, add it to the drawnItems layer and save its coordinates
+    this.#map.on('draw:created', e => {
+      const layer = e.layer;
+      const latLngs = layer.getLatLngs();
+
+      const drawLine = L.polyline(latLngs, {
+        color: 'red',
+        weight: 3,
+      })
+        .addTo(this.#drawnLines)
+        .addTo(this.#map);
+      this.#drawLine = drawLine;
+      this._showForm();
+      this.#line = latLngs;
+      this.#drawnLines.addLayer(drawLine);
+      const bounds = this.#drawnLines.getBounds();
+      const center = bounds.getCenter();
+      this.#center = center;
+    });
     this.#workouts.forEach(work => {
       this._renderWorkoutMarker(work);
+      this._renderPolyline(work);
+      //render polylines too here
     });
-  }
-
-  _drawLines() {
-    // const drawnItems = new L.FeatureGroup();
-    // this.#map.addLayer(drawnItems);
-    // // when a polyline is created, add it to the drawnItems layer and save its coordinates
-    // this.#map.on('draw:created', function (e) {
-    //   const layer = e.layer;
-    //   drawnItems.addLayer(layer);
-    //   // get the coordinates of the polyline and save them to a variable or send them to your server
-    //   const polylineCoords = layer.getLatLngs();
-    //   console.log(polylineCoords);
-    // });
   }
 
   _mapClick(mapE) {
@@ -249,12 +264,15 @@ class App {
     const type = inputType.value;
     const distance = +inputDistance.value;
     const duration = +inputDuration.value;
+
     if (!this.#mapEvent) this._editWorkout();
-    if (!this.#mapEvent) return;
-    const { lat, lng } = this.#mapEvent.latlng;
+
+    const { lat, lng } = this.#center ? this.#center : this.#mapEvent.latlng;
+
     let workout;
     let created = new Date();
     const id = (Date.now() + '').slice(-10);
+    let line = this.#line;
     //if workout running, create running object
     if (type === 'running') {
       const cadence = +inputCadence.value;
@@ -269,7 +287,8 @@ class App {
         duration,
         cadence,
         created,
-        id
+        id,
+        line
       );
     }
     //if workout cycling, create cycling object
@@ -286,12 +305,15 @@ class App {
         duration,
         elevation,
         created,
-        id
+        id,
+        line
       );
     }
 
     this.#workouts.push(workout);
     this._showSortMenu();
+    //render polyline too here
+    this._renderPolyline(workout);
     this._renderWorkoutMarker(workout);
     this._renderWorkout(workout);
     this._hideForm();
@@ -322,8 +344,6 @@ class App {
     workouts.forEach(work => {
       this._renderWorkout(work);
     });
-
-    console.log(workouts);
   }
 
   _showSortMenu() {
@@ -346,6 +366,7 @@ class App {
 
   _editWorkout(workout) {
     workout = this.#targetWorkout;
+    if (!this.#targetWorkout) return;
     const originalDistance = workout.distance;
     const originalDuration = workout.duration;
     const originalCadence = workout.cadence;
@@ -398,8 +419,6 @@ class App {
     const updatedWorkouts = this.#workouts.filter(
       workout => workout.id !== this.#targetWorkout.id
     );
-    // Update the workouts array in local storage (optional)
-    localStorage.setItem('workouts', JSON.stringify(updatedWorkouts));
     // Render the updated workouts array
     this.#workouts = updatedWorkouts;
     const deletedWorkoutElement = document.querySelector(
@@ -410,6 +429,20 @@ class App {
       marker => marker._id === this.#targetWorkout.id
     );
     marker.removeFrom(this.#map);
+    const polyline = this.#polylines.find(
+      polyline => polyline._id === this.#targetWorkout.id
+    );
+    if (polyline) {
+      this.#map.removeLayer(polyline);
+      this.#drawnLines.removeLayer(polyline);
+      this.#polylines = this.#polylines.filter(p => p !== polyline);
+    }
+    if (this.#drawLine) {
+      this.#map.removeLayer(this.#drawLine);
+      this.#drawnLines.removeLayer(this.#drawLine);
+    }
+    this.#targetWorkout = null;
+    localStorage.setItem('workouts', JSON.stringify(updatedWorkouts));
     this._hideSortMenu();
     this._hideButtons();
     this._hideForm();
@@ -419,6 +452,18 @@ class App {
     alert('Are you sure you want to delete all workouts?');
     localStorage.removeItem('workouts');
     location.reload();
+  }
+
+  _renderPolyline(workout) {
+    if (!workout.line) return;
+    const polyline = L.polyline(workout.line, { color: 'red' }).addTo(
+      this.#map
+    );
+    // // this.#map.addLayer(drawnItems);
+    // polyline._id = workout.id; // assign the workout ID to the polyline
+    polyline._id = workout.id;
+    this.#polylines.push(polyline);
+    this.#drawnLines.addLayer(polyline);
   }
 
   _renderWorkoutMarker(workout) {
@@ -500,6 +545,7 @@ class App {
       },
     });
     this.#targetWorkout = workout;
+
     //using the public interface
     workout.click();
     this._showForm();
@@ -525,10 +571,19 @@ class App {
         elevationGain,
         created,
         id,
+        line,
       } = work;
       //  return type of workout
       if (type === 'running') {
-        return new Running(coords, distance, duration, cadence, created, id);
+        return new Running(
+          coords,
+          distance,
+          duration,
+          cadence,
+          created,
+          id,
+          line
+        );
       } else {
         return new Cycling(
           coords,
@@ -536,7 +591,8 @@ class App {
           duration,
           elevationGain,
           created,
-          id
+          id,
+          line
         );
       }
     });
