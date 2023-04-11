@@ -56,6 +56,7 @@ class Cycling extends Workout {
 //APPLICATION ARCHITECTURE
 const form = document.querySelector('.form');
 const containerWorkouts = document.querySelector('.workouts');
+const mapContainer = document.querySelector('#map');
 const inputType = document.querySelector('.form__input--type');
 const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
@@ -90,7 +91,10 @@ class App {
     this._getLocalStorage();
     this._modalMessage();
     //attach event handlers
-
+    // mapContainer.addEventListener(
+    //   'mouseover',
+    //   this._removeDrawnLines.bind(this)
+    // );
     form.addEventListener('submit', this._newWorkout.bind(this));
     inputType.addEventListener('change', this._toggleElevationField);
     containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
@@ -147,7 +151,7 @@ class App {
       edit: false,
     });
     this.#map.addControl(drawControl);
-
+    // this.#map.clearLayer(this.#drawnLines);
     //handling clicks on map;
     this.#map.on('click', this._mapClick.bind(this));
     // when a polyline is created, add it to the drawnItems layer and save its coordinates
@@ -159,9 +163,10 @@ class App {
         color: 'red',
         weight: 3,
       })
-        .addTo(this.#drawnLines)
+        // .addTo(this.#drawnLines)
         .addTo(this.#map);
-
+      console.log(this.#drawnLines);
+      console.log(this.#map);
       this._showForm();
       this.#line = latLngs;
 
@@ -186,7 +191,15 @@ class App {
     this.workout = '';
     inputType.disabled = false;
     this._;
+    console.log(this.#targetWorkout);
     return;
+  }
+
+  _removeDrawnLines() {
+    console.log(this);
+    console.log(this.#map);
+    if (!this.#drawnLines) return;
+    this.#map.e.removeLayer(this.#drawnLines);
   }
 
   _modalMessage() {
@@ -271,7 +284,7 @@ class App {
     const duration = +inputDuration.value;
 
     if (!this.#mapEvent) this._editWorkout();
-
+    if (!this.#center) return;
     const { lat, lng } = this.#center;
 
     let workout;
@@ -328,7 +341,7 @@ class App {
 
   _sortWorkouts(workouts, key) {
     this._hideForm();
-    this._hideButtons();
+    this._hideDeleteButton();
 
     workouts.sort((a, b) => {
       if (a[key] === undefined || a[key] === null) {
@@ -375,7 +388,7 @@ class App {
 
   _editWorkout(workout) {
     workout = this.#targetWorkout;
-    if (!this.#targetWorkout) return;
+
     const originalDistance = workout.distance;
     const originalDuration = workout.duration;
     const originalCadence = workout.cadence;
@@ -417,10 +430,12 @@ class App {
     }
     this._setLocalStorage();
     const updateElWorkout = document.querySelector(`[data-id="${workout.id}"]`);
+    console.log(updateElWorkout);
     updateElWorkout.remove();
     this._hideForm();
     this._hideDeleteButton();
     this._renderWorkout(workout);
+    if (this.#workouts.length <= 1) this._hideDeleteAll();
   }
 
   _deleteWorkout() {
