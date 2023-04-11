@@ -171,9 +171,10 @@ a:visited {
   margin-bottom: 0;
   opacity: 0;
 }
-.hidebtns {
+.hide {
   display: none;
 }
+
 .sort__menu {
   position: absolute;
   padding: 3px;

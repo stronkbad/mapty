@@ -61,8 +61,8 @@ const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
 const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
-const deletebtn = document.querySelector('.delete__btn');
-const clearbtn = document.querySelector('.clear__btn');
+const delBtn = document.querySelector('.delete__btn');
+const delAll = document.querySelector('.deleteAll__btn');
 const overlay = document.querySelector('.overlay');
 const modal = document.querySelector('.modal');
 const sortMenu = document.querySelector('.sort__menu');
@@ -82,22 +82,20 @@ class App {
   #line;
   #center;
   #polylines = [];
-  #drawLine;
   #drawnLines = new L.FeatureGroup();
+  #renderLines = new L.FeatureGroup();
 
   constructor() {
     this._getPosition();
     this._getLocalStorage();
     this._modalMessage();
     //attach event handlers
-    // document
-    //   .querySelector('#create-button')
-    //   .addEventListener('click', this._newWorkout.bind(this));
+
     form.addEventListener('submit', this._newWorkout.bind(this));
     inputType.addEventListener('change', this._toggleElevationField);
     containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
-    deletebtn.addEventListener('click', this._deleteWorkout.bind(this));
-    clearbtn.addEventListener('click', this._clearWorkouts);
+    delBtn.addEventListener('click', this._deleteWorkout.bind(this));
+    delAll.addEventListener('click', this._DeleteAllWorkouts);
     sortDistance.addEventListener('click', () =>
       this._sortWorkouts(this.#workouts, 'distance')
     );
@@ -151,7 +149,7 @@ class App {
     this.#map.addControl(drawControl);
 
     //handling clicks on map;
-    // this.#map.on('click', this._showForm.bind(this));
+    this.#map.on('click', this._mapClick.bind(this));
     // when a polyline is created, add it to the drawnItems layer and save its coordinates
     this.#map.on('draw:created', e => {
       const layer = e.layer;
@@ -163,11 +161,13 @@ class App {
       })
         .addTo(this.#drawnLines)
         .addTo(this.#map);
-      this.#drawLine = drawLine;
+
       this._showForm();
       this.#line = latLngs;
-      this.#drawnLines.addLayer(drawLine);
-      const bounds = this.#drawnLines.getBounds();
+
+      this.#renderLines.addLayer(drawLine);
+
+      const bounds = drawLine.getBounds();
       const center = bounds.getCenter();
       this.#center = center;
     });
@@ -180,8 +180,13 @@ class App {
 
   _mapClick(mapE) {
     this.#mapEvent = mapE;
+    this._hideDeleteButton();
+    this._hideForm();
+    this.#targetWorkout = '';
+    this.workout = '';
     inputType.disabled = false;
-    this._hideButtons();
+    this._;
+    return;
   }
 
   _modalMessage() {
@@ -210,7 +215,7 @@ class App {
   }
 
   _showForm(mapE) {
-    this._mapClick(mapE);
+    // this._mapClick(mapE);
     form.classList.remove('hidden');
     this._emptyForm();
     inputDistance.focus();
@@ -267,7 +272,7 @@ class App {
 
     if (!this.#mapEvent) this._editWorkout();
 
-    const { lat, lng } = this.#center ? this.#center : this.#mapEvent.latlng;
+    const { lat, lng } = this.#center;
 
     let workout;
     let created = new Date();
@@ -315,6 +320,7 @@ class App {
     //render polyline too here
     this._renderPolyline(workout);
     this._renderWorkoutMarker(workout);
+
     this._renderWorkout(workout);
     this._hideForm();
     this._setLocalStorage();
@@ -349,19 +355,22 @@ class App {
   _showSortMenu() {
     if (this.#workouts.length > 1) sortMenu.classList.remove('hidesort');
   }
-
   _hideSortMenu() {
     if (this.#workouts.length <= 1) sortMenu.classList.add('hidesort');
   }
 
-  _showButtons() {
-    deletebtn.classList.remove('hidebtns');
-    if (this.#workouts.length >= 2) clearbtn.classList.remove('hidebtns');
+  _showDeleteButton() {
+    delBtn.classList.remove('hide');
+    ('hide');
   }
-
-  _hideButtons() {
-    deletebtn.classList.add('hidebtns');
-    if (this.#workouts.length >= 1) clearbtn.classList.add('hidebtns');
+  _hideDeleteButton() {
+    delBtn.classList.add('hide');
+  }
+  _showDeleteAll() {
+    delAll.classList.remove('hide');
+  }
+  _hideDeleteAll() {
+    delAll.classList.add('hide');
   }
 
   _editWorkout(workout) {
@@ -410,20 +419,23 @@ class App {
     const updateElWorkout = document.querySelector(`[data-id="${workout.id}"]`);
     updateElWorkout.remove();
     this._hideForm();
-    this._hideButtons();
+    this._hideDeleteButton();
     this._renderWorkout(workout);
   }
 
   _deleteWorkout() {
     // Find the workout with the matching id and remove it from the workouts array
+    console.log(this.#targetWorkout);
     const updatedWorkouts = this.#workouts.filter(
       workout => workout.id !== this.#targetWorkout.id
     );
     // Render the updated workouts array
     this.#workouts = updatedWorkouts;
+
     const deletedWorkoutElement = document.querySelector(
       `[data-id="${this.#targetWorkout.id}"]`
     );
+    console.log(deletedWorkoutElement);
     deletedWorkoutElement.remove();
     const marker = this.#markers.find(
       marker => marker._id === this.#targetWorkout.id
@@ -434,21 +446,18 @@ class App {
     );
     if (polyline) {
       this.#map.removeLayer(polyline);
-      this.#drawnLines.removeLayer(polyline);
+      this.#renderLines.removeLayer(polyline);
       this.#polylines = this.#polylines.filter(p => p !== polyline);
     }
-    if (this.#drawLine) {
-      this.#map.removeLayer(this.#drawLine);
-      this.#drawnLines.removeLayer(this.#drawLine);
-    }
-    this.#targetWorkout = null;
+
     localStorage.setItem('workouts', JSON.stringify(updatedWorkouts));
     this._hideSortMenu();
-    this._hideButtons();
+    this._hideDeleteButton();
+    if (this.#workouts.length <= 2) this._hideDeleteAll();
     this._hideForm();
   }
 
-  _clearWorkouts() {
+  _DeleteAllWorkouts() {
     alert('Are you sure you want to delete all workouts?');
     localStorage.removeItem('workouts');
     location.reload();
@@ -456,14 +465,15 @@ class App {
 
   _renderPolyline(workout) {
     if (!workout.line) return;
-    const polyline = L.polyline(workout.line, { color: 'red' }).addTo(
+    const color = workout.type === 'running' ? '#00c46a' : '#ffb545';
+    const polyline = L.polyline(workout.line, { color: color }).addTo(
       this.#map
     );
     // // this.#map.addLayer(drawnItems);
     // polyline._id = workout.id; // assign the workout ID to the polyline
     polyline._id = workout.id;
     this.#polylines.push(polyline);
-    this.#drawnLines.addLayer(polyline);
+    this.#renderLines.addLayer(polyline);
   }
 
   _renderWorkoutMarker(workout) {
@@ -538,19 +548,25 @@ class App {
     let workoutEl = e.target.closest('.workout');
     if (!workoutEl) return;
     let workout = this.#workouts.find(work => work.id === workoutEl.dataset.id);
+    this.#targetWorkout = workout;
+
+    // if (Worker.marker.getPopup().isOpen()) return;
+    // this.#map.closePopup();
+    // workout.marker.openPopup();
+
     this.#map.setView(workout.coords, this.#mapZoomLevel, {
       animate: true,
       pan: {
         duration: 1,
       },
     });
-    this.#targetWorkout = workout;
-
+    console.log(workout);
     //using the public interface
     workout.click();
     this._showForm();
     this._fillForm(workout);
-    this._showButtons();
+    if (this.#workouts.length >= 1) this._showDeleteButton();
+    if (this.#workouts.length >= 2) this._showDeleteAll();
   }
 
   _setLocalStorage() {
